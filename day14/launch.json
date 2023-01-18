@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "codelldb",
+            "name": "Launch Test Input",
+            "request": "launch",
+            "program": "./build/main",
+            "args": ["test_in"]
+        }
+    ]
+}
