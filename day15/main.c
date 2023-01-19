@@ -25,16 +25,19 @@ typedef struct node_t {
 } node_t;
 
 int range_cmp(range_t *left, range_t *right) {
-  if (left->start == right->start)
+  if (left->start == right->start) {
     return 0;
-  if (left->start < right->start)
+  }
+  if (left->start < right->start) {
     return -1;
+  }
   return 1;
 }
 
 void tree_free(node_t *tree) {
-  if (!tree)
+  if (!tree) {
     return;
+  }
   tree_free(tree->right);
   tree_free(tree->left);
   free(tree->value);
@@ -84,14 +87,16 @@ void tree_insert(node_t **tree, range_t *value) {
 }
 
 size_t tree_len(node_t **tree) {
-  if (!(*tree))
+  if (!(*tree)) {
     return 0;
+  }
   return 1 + tree_len(&(*tree)->left) + tree_len(&(*tree)->right);
 }
 
 size_t tree_size(node_t **tree) {
-  if (!(*tree))
+  if (!(*tree)) {
     return 0;
+  }
   return (*tree)->value->end - (*tree)->value->start +
          tree_size(&(*tree)->left) + tree_size(&(*tree)->right);
 }
@@ -160,8 +165,9 @@ void linetree_insert(linenode_t **tree, long y_intercept, line_t *line) {
 }
 
 size_t linetree_len(linenode_t **tree) {
-  if (!(*tree))
+  if (!(*tree)) {
     return 0;
+  }
   return (*tree)->n_lines + linetree_len(&(*tree)->left) +
          linetree_len(&(*tree)->right);
 }
@@ -189,9 +195,8 @@ int linetree_get(line_t *(**lines)[], size_t *n_lines, long y_intercept,
 long line_slope(line_t *line) {
   if (line->end.y - line->start.y > 0) {
     return 1;
-  } else {
-    return -1;
   }
+  return -1;
 }
 
 long line_y_intercept(line_t *line) {
@@ -252,10 +257,12 @@ void filter_overlap(line_t *lines[], size_t *n_lines, linenode_t *tree1,
     }
   }
 
-  if (tree1->right)
+  if (tree1->right) {
     filter_overlap(lines, n_lines, tree1->right, tree2);
-  if (tree1->left)
+  }
+  if (tree1->left) {
     filter_overlap(lines, n_lines, tree1->left, tree2);
+  }
 }
 
 void lines_intersect(coord_t **intersection, line_t *line1, line_t *line2) {
@@ -303,8 +310,9 @@ bool is_covered(pair_t pairs[], size_t n_pairs, coord_t point) {
   bool covered = false;
   for (int i = 0; i < n_pairs; i++) {
     if ((labs(pairs[i].sensor.x - point.x) +
-         labs(pairs[i].sensor.y - point.y)) <= pairs[i].radius)
+         labs(pairs[i].sensor.y - point.y)) <= pairs[i].radius) {
       covered = true;
+    }
   }
 
   return covered;
@@ -323,11 +331,14 @@ int main(int argc, char *argv[]) {
     y = 10;
 
   fp = fopen(filename, "r");
-  if (fp == NULL)
+  if (fp == NULL) {
     exit(EXIT_FAILURE);
+  }
 
-  char *sensor_str, *beacon_str;
-  coord_t sensor, beacon;
+  char *sensor_str;
+  char *beacon_str;
+  coord_t sensor;
+  coord_t beacon;
   long radius;
   node_t *root = NULL;
   range_t *range = NULL;
@@ -397,8 +408,9 @@ int main(int argc, char *argv[]) {
     curline->end.y = sensor.y;
     linetree_insert(&right_to_bottom, line_y_intercept(curline), curline);
 
-    if (labs(sensor.y - y) > radius)
+    if (labs(sensor.y - y) > radius) {
       continue;
+    }
 
     range = calloc(1, sizeof(range_t));
     range->start = sensor.x - (radius - labs(sensor.y - y));
@@ -425,15 +437,17 @@ int main(int argc, char *argv[]) {
                    n_lines_upslope, lines_downslope, n_lines_downslope);
   // HACK: These should be made unique
   for (int i = 0; i < n_intersections; i++) {
-    if (is_covered(pairs, pairs_idx, intersections[i]))
+    if (is_covered(pairs, pairs_idx, intersections[i])) {
       continue;
+    }
     printf("%ld\n", intersections[i].x * 4000000 + intersections[i].y);
   }
 
   fclose(fp);
 
-  if (line)
+  if (line) {
     free(line);
+  }
 
   exit(EXIT_SUCCESS);
 
