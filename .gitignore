@@ -5,3 +5,5 @@ test_out
 main
 main*/
 vgcore*
+.cache
+compile_commands.json

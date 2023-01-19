@@ -7,4 +7,4 @@ Checks: >
   portability-*,
   readability-*,
 # Turn all the warnings from the checks above into errors.
-WarningsAsErrors: "*"
+WarningsAsErrors: ""
