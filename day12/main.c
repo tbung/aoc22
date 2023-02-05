@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../lib/stack.h"
+
 #define GRID_SIZE 64 * 256
 #define STACK_SIZE 1024
 #define START 'E'
@@ -11,47 +13,7 @@
 #define END 'S'
 #define ENDVAL 'a'
 
-typedef struct {
-  size_t data[STACK_SIZE];
-  int read;
-  int write;
-} cstack_t;
-
-cstack_t stack_new() {
-  cstack_t _stack = {.read = 0, .data = {0}, .write = 0};
-  return _stack;
-}
-
-void stack_push(cstack_t *stack, size_t item) {
-  if ((stack->write + 1 == stack->read) ||
-      (stack->read == 0 && stack->write + 1 == STACK_SIZE)) {
-    perror("Overflow\n");
-    exit(EXIT_FAILURE);
-  }
-
-  stack->data[stack->write] = item;
-
-  stack->write++;
-  if (stack->write >= STACK_SIZE)
-    stack->write = 0;
-}
-
-size_t stack_pop(cstack_t *stack) {
-  if (stack->read == stack->write) {
-    perror("Overflow\n");
-    exit(EXIT_FAILURE);
-  }
-
-  size_t res = stack->data[stack->read];
-
-  stack->read++;
-  if (stack->read >= STACK_SIZE)
-    stack->read = 0;
-
-  return res;
-};
-
-bool stack_is_empty(cstack_t *stack) { return stack->read == stack->write; }
+STACK(, size_t, STACK_SIZE)
 
 void print_grid(char *grid, size_t row_ptr, size_t col_ptr) {
   for (int i = 0; i < row_ptr; i++) {
@@ -98,9 +60,9 @@ int main(int argc, char *argv[]) {
     idx++;
   }
 
-  cstack_t _stack = stack_new();
-  cstack_t *stack = &_stack;
-  stack_push(stack, start_idx);
+  stack__t *stack = stack__new();
+  // cstack_t *stack = &_stack;
+  stack__push(stack, start_idx);
 
   size_t current, i, j, adj;
   bool visited[GRID_SIZE] = {false};
@@ -108,8 +70,8 @@ int main(int argc, char *argv[]) {
   int parent[GRID_SIZE] = {[0 ... GRID_SIZE - 1] = -1};
   long inspecting, inspadj;
 
-  while (!stack_is_empty(stack)) {
-    current = stack_pop(stack);
+  while (!stack__empty(stack)) {
+    current = stack__pop(stack);
     // if (current == end_idx)
     //   break;
 
@@ -133,7 +95,7 @@ int main(int argc, char *argv[]) {
           inspadj = ENDVAL;
         // if ((inspadj <= (inspecting + 1))) {
         if ((inspadj >= (inspecting - 1))) {
-          stack_push(stack, adj);
+          stack__push(stack, adj);
           visited[adj] = true;
           parent[adj] = current;
         }
@@ -147,7 +109,7 @@ int main(int argc, char *argv[]) {
         if (inspadj == END)
           inspadj = ENDVAL;
         if ((inspadj >= (inspecting - 1))) {
-          stack_push(stack, adj);
+          stack__push(stack, adj);
           visited[adj] = true;
           parent[adj] = current;
         }
@@ -161,7 +123,7 @@ int main(int argc, char *argv[]) {
         if (inspadj == END)
           inspadj = ENDVAL;
         if ((inspadj >= (inspecting - 1))) {
-          stack_push(stack, adj);
+          stack__push(stack, adj);
           visited[adj] = true;
           parent[adj] = current;
         }
@@ -175,7 +137,7 @@ int main(int argc, char *argv[]) {
         if (inspadj == END)
           inspadj = ENDVAL;
         if ((inspadj >= (inspecting - 1))) {
-          stack_push(stack, adj);
+          stack__push(stack, adj);
           visited[adj] = true;
           parent[adj] = current;
         }
