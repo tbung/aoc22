@@ -1,6 +1,9 @@
 #ifndef STACK_H
 #define STACK_H
 
+#include <stdbool.h>
+#include <stdlib.h>
+
 #define QUEUE(name, type, size)                                                \
   typedef struct {                                                             \
     type data[size];                                                           \
@@ -73,5 +76,83 @@
   }                                                                            \
   size_t stack_##name##_len(stack_##name##_t *stack) { return stack->top; }    \
   bool stack_##name##_empty(stack_##name##_t *stack) { return stack->top == 0; }
+
+// typedef int type;
+// #define size 64
+
+#define HEAP(name, type, size)                                                 \
+  typedef struct {                                                             \
+    type data[size];                                                           \
+    int (*cmp)(const type, const type);                                        \
+    size_t count;                                                              \
+  } heap_##name##_t;                                                           \
+  heap_##name##_t *heap_##name##_new(int (*cmp)(const type, const type)) {     \
+    heap_##name##_t *_heap = calloc(1, sizeof(heap_##name##_t));               \
+    _heap->count = 0;                                                          \
+    _heap->cmp = cmp;                                                          \
+    return _heap;                                                              \
+  }                                                                            \
+  void heap_##name##_down(heap_##name##_t *heap, size_t index) {               \
+    if (index >= heap->count)                                                  \
+      return;                                                                  \
+    int left = (int)index * 2 + 1;                                             \
+    int right = (int)index * 2 + 2;                                            \
+    int leftflag = 0;                                                          \
+    int rightflag = 0;                                                         \
+                                                                               \
+    type minimum = heap->data[index];                                          \
+    if (left < heap->count && heap->cmp(minimum, heap->data[left]) == 1) {     \
+      minimum = heap->data[left];                                              \
+      leftflag = 1;                                                            \
+    }                                                                          \
+    if (right < heap->count && heap->cmp(minimum, heap->data[right]) == 1) {   \
+      minimum = heap->data[right];                                             \
+      leftflag = 0;                                                            \
+      rightflag = 1;                                                           \
+    }                                                                          \
+    if (leftflag) {                                                            \
+      heap->data[left] = heap->data[index];                                    \
+      heap->data[index] = minimum;                                             \
+      heap_##name##_down(heap, left);                                          \
+    }                                                                          \
+    if (rightflag) {                                                           \
+      heap->data[right] = heap->data[index];                                   \
+      heap->data[index] = minimum;                                             \
+      heap_##name##_down(heap, right);                                         \
+    }                                                                          \
+  }                                                                            \
+  void heap_##name##_up(heap_##name##_t *heap, size_t index) {                 \
+    int parent = ((int)index - 1) / 2;                                         \
+    if (parent < 0) {                                                          \
+      return;                                                                  \
+    }                                                                          \
+    if (heap->cmp(heap->data[index], heap->data[parent]) == -1) {              \
+      type temp = heap->data[index];                                           \
+      heap->data[index] = heap->data[parent];                                  \
+      heap->data[parent] = temp;                                               \
+      heap_##name##_up(heap, parent);                                          \
+    }                                                                          \
+  }                                                                            \
+  void heap_##name##_push(heap_##name##_t *heap, type item) {                  \
+    heap->data[heap->count] = item;                                            \
+    heap->count++;                                                             \
+    heap_##name##_up(heap, heap->count - 1);                                   \
+  }                                                                            \
+  type heap_##name##_pop(heap_##name##_t *heap) {                              \
+    if (heap->count <= 0) {                                                    \
+      exit(EXIT_FAILURE);                                                      \
+    }                                                                          \
+    if (heap->count == 1) {                                                    \
+      heap->count--;                                                           \
+      return heap->data[0];                                                    \
+    }                                                                          \
+    type root = heap->data[0];                                                 \
+    heap->data[0] = heap->data[heap->count - 1];                               \
+    heap->count--;                                                             \
+    heap_##name##_down(heap, 0);                                               \
+    return root;                                                               \
+  }                                                                            \
+  size_t heap_##name##_len(heap_##name##_t *heap) { return heap->count; }      \
+  bool heap_##name##_empty(heap_##name##_t *heap) { return heap->count == 0; }
 
 #endif

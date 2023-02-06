@@ -53,7 +53,7 @@ size_t **floyd_warshall(valve_t *valves[], size_t n_valves,
 }
 
 typedef struct state_t {
-  bool visited[VALVES_SIZE];
+  unsigned long visited_b;
   valve_t *valve;
   size_t minutes_remaining;
   size_t pressure_released;
@@ -68,9 +68,12 @@ state_t *state_new() {
   state->pressure_released = 0;
   state->bound = 0;
   state->parent = NULL;
+  state->visited_b = 0;
 
   return state;
 }
+
+void state_free(state_t *state) { free(state); }
 
 STACK(state, state_t *, STACK_SIZE)
 
@@ -164,8 +167,19 @@ int main(int argc, char *argv[]) {
   if (line) {
     free(line);
   }
+  regfree(&regex_rate);
+  regfree(&regex_conn);
 
   size_t **distances = floyd_warshall(valves, n_valves, valve_ids);
+
+  size_t valves_non_zero[VALVES_SIZE] = {0};
+  size_t n_valves_non_zero = 0;
+  for (int i = 0; i < n_valves; i++) {
+    if (valves[i]->rate > 0) {
+      valves_non_zero[n_valves_non_zero] = i;
+      n_valves_non_zero++;
+    }
+  }
 
   // BRANCH AND BOUND https://en.wikipedia.org/wiki/Branch_and_bound
   valve_t **valves_by_flowrate = calloc(n_valves, sizeof(valve_t *));
@@ -174,7 +188,7 @@ int main(int argc, char *argv[]) {
 
   state_t *initial = state_new();
   initial->valve = valves[valve_name_idx("AA", valve_ids)];
-  initial->visited[valve_name_idx("AA", valve_ids)] = true;
+  initial->visited_b |= 1L << valve_name_idx("AA", valve_ids);
   initial->minutes_remaining = 30;
   initial->pressure_released = 0;
   initial->parent = NULL;
@@ -184,34 +198,36 @@ int main(int argc, char *argv[]) {
 
   while (!stack_state_empty(stack)) {
     state_t *state = stack_state_pop(stack);
-    // printf("%ld\n", state->pressure_released);
 
     if (state->pressure_released > best->pressure_released) {
+      state_free(best);
       best = state;
     }
 
-    for (int i = 0; i < n_valves; i++) {
-      if ((valves[i]->rate == 0) || (state->visited[i])) {
+    for (int i = 0; i < n_valves_non_zero; i++) {
+      int idx = valves_non_zero[i];
+
+      if ((valves[idx]->rate == 0) || ((state->visited_b & (1L << idx)) != 0)) {
         continue;
       }
-      size_t distance = distances[valve_idx(state->valve, valve_ids)][i];
+      size_t distance = distances[valve_idx(state->valve, valve_ids)][idx];
       if (distance >= state->minutes_remaining) {
         continue;
       }
       state_t *next = state_new();
-      next->valve = valves[i];
+      next->valve = valves[idx];
       next->minutes_remaining = state->minutes_remaining - distance - 1;
-      memcpy(next->visited, state->visited, n_valves * sizeof(bool));
-      next->visited[i] = true;
+      next->visited_b = state->visited_b | (1L << idx);
       next->pressure_released = state->pressure_released +
                                 next->minutes_remaining * next->valve->rate;
-      next->parent = state;
+      // next->parent = state;
 
       size_t bound = next->pressure_released;
       int j = 0;
       long min = next->minutes_remaining - 2;
       while ((j < n_valves) && (min >= 0)) {
-        if (next->visited[valve_idx(valves_by_flowrate[j], valve_ids)]) {
+        if ((next->visited_b &
+             (1L << valve_idx(valves_by_flowrate[j], valve_ids))) != 0) {
           j++;
           continue;
         }
@@ -222,6 +238,7 @@ int main(int argc, char *argv[]) {
       }
 
       if (bound <= best->pressure_released) {
+        state_free(next);
         continue;
       }
 
@@ -229,9 +246,22 @@ int main(int argc, char *argv[]) {
 
       stack_state_push(stack, next);
     }
+
+    if (best != state)
+      state_free(state);
   }
 
   printf("%ld\n", best->pressure_released);
+
+  for (int i = 0; i < n_valves; i++) {
+    valve_free(valves[i]);
+    free(distances[i]);
+  }
+  free(valves_by_flowrate);
+  free(distances);
+  free(stack);
+  // state_free(initial);
+  state_free(best);
 
   return 0;
 }

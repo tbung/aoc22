@@ -1,3 +1,6 @@
+#ifndef VALVE_H
+#define VALVE_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,7 +17,7 @@ typedef struct {
 
 valve_t *valve_new() {
   valve_t *valve = calloc(1, sizeof(valve_t));
-  valve->name = calloc(3, sizeof(char));
+  valve->name = NULL;
   valve->capacity = 1;
   valve->n_neighbors = 0;
   valve->neighbors = calloc(valve->capacity, sizeof(char *));
@@ -68,3 +71,14 @@ size_t valve_idx(const valve_t *valve, const size_t valve_ids[MAX_VALVES]) {
 size_t valve_name_idx(const char *name, const size_t valve_ids[MAX_VALVES]) {
   return valve_ids[valve_name_to_id(name)];
 }
+
+void valve_free(valve_t *valve) {
+  free(valve->name);
+  for(int i = 0; i < valve->n_neighbors; i++) {
+    free(valve->neighbors[i]);
+  }
+  free(valve->neighbors);
+  free(valve);
+}
+
+#endif
