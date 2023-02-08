@@ -1,10 +1,12 @@
-build/debug/main: main.c
-	mkdir -p build/debug
-	gcc -g -Wall -o build/debug/main main.c
+HEADERS := $(wildcard *.h) $(wildcard ../lib/*.h)
 
-build/release/main: main.c
+build/debug/main: main.c $(HEADERS)
+	mkdir -p build/debug
+	gcc -xc -g -Wall -o build/debug/main main.c
+
+build/release/main: main.c $(HEADERS)
 	mkdir -p build/release
-	gcc -Wall -O3 -o build/release/main main.c
+	gcc -xc -Wall -O3 -o build/release/main main.c
 
 .PHONY: release
 release: build/release/main

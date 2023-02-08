@@ -4,6 +4,8 @@ test_in
 test_out
 main
 main*/
+test*
+build
 vgcore*
 .cache
 compile_commands.json
