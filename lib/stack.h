@@ -6,13 +6,14 @@
 
 #define QUEUE(name, type, size)                                                \
   typedef struct {                                                             \
-    type data[size];                                                           \
+    type *data;                                                                \
     size_t read;                                                               \
     size_t write;                                                              \
     size_t count;                                                              \
   } queue_##name##_t;                                                          \
   queue_##name##_t *queue_##name##_new() {                                     \
     queue_##name##_t *_queue = calloc(1, sizeof(queue_##name##_t));            \
+    _queue->data = calloc(size, sizeof(type));                                 \
     _queue->read = 0;                                                          \
     _queue->write = 0;                                                         \
     _queue->count = 0;                                                         \
