@@ -77,9 +77,10 @@ int main(int argc, char *argv[]) {
     stry = strtok(NULL, ",");
     strz = strtok(NULL, ",");
 
-    x = atoi(strx);
-    y = atoi(stry);
-    z = atoi(strz);
+    // some of them might be 0, but none are <0, make sure we have air left
+    x = atoi(strx) + 1;
+    y = atoi(stry) + 1;
+    z = atoi(strz) + 1;
 
     box[x][y][z] = true;
     coord_t coord = {x, y, z};
@@ -123,9 +124,6 @@ int main(int argc, char *argv[]) {
       coord_t a = coord_add(c, adjacent[j]);
       if ((a.x >= MAX_COORD) || (a.x < 0) || (a.y >= MAX_COORD) || (a.y < 0) ||
           (a.z >= MAX_COORD) || (a.z < 0)) {
-        continue;
-      }
-      if (visited[a.x][a.y][a.z]) {
         continue;
       }
       if (box[a.x][a.y][a.z]) {
