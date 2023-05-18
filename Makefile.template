@@ -12,13 +12,13 @@ build/release/main: main.c $(HEADERS)
 release: build/release/main
 
 .PHONY: run
-run: main
-	./build/main input
+run: build/release/main
+	./build/release/main input
 
 .PHONY: clean
 clean:
 	rm -rf build
 
 .PHONY: test
-test: main test_in
-	./build/main test_in | diff test_out -
+test: build/debug/main test_in
+	./build/debug/main test_in
