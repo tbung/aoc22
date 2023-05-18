@@ -149,12 +149,9 @@ void inventory_step(inventory_t *initial, inventory_t *next) {
 STACK(inventory, inventory_t *, 1024)
 
 size_t inventory_bound(inventory_t *inventory) {
-  size_t bound =
-      inventory->bots.geode * inventory->time + inventory->resources.geode;
-
-  for (size_t i = inventory->time; i > 0; i--) {
-    bound += i;
-  }
+  size_t bound = inventory->bots.geode * inventory->time +
+                 inventory->resources.geode +
+                 (inventory->time * (inventory->time - 1)) / 2;
 
   return bound;
 }
@@ -162,7 +159,6 @@ size_t inventory_bound(inventory_t *inventory) {
 size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
   inventory_t *initial = inventory_new();
   initial->bots.ore = 1;
-  /* initial->time = 24; */
   initial->time = time;
   stack_inventory_t *stack = stack_inventory_new();
   stack_inventory_push(stack, initial);
