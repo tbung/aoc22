@@ -159,10 +159,11 @@ size_t inventory_bound(inventory_t *inventory) {
   return bound;
 }
 
-inventory_t *branch_and_bound(blueprint_t *blueprint) {
+size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
   inventory_t *initial = inventory_new();
   initial->bots.ore = 1;
-  initial->time = 24;
+  /* initial->time = 24; */
+  initial->time = time;
   stack_inventory_t *stack = stack_inventory_new();
   stack_inventory_push(stack, initial);
 
@@ -172,20 +173,17 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
   const size_t max_clay_bots = blueprint->obsidian_bot.clay;
   const size_t max_obsidian_bots = blueprint->geode_bot.obsidian;
 
-  inventory_t *best = initial;
+  size_t best = 0;
 
   while (!stack_inventory_empty(stack)) {
     inventory_t *inventory = stack_inventory_pop(stack);
 
-    /* printf("\n"); */
-    /* print_inventory(inventory); */
-
-    if (inventory->resources.geode > best->resources.geode) {
-      best = inventory;
+    if (inventory->resources.geode > best) {
+      best = inventory->resources.geode;
     }
 
     if (inventory->time == 0) {
-      /* free(inventory); */
+      free(inventory);
       continue;
     }
 
@@ -204,13 +202,13 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
-      if (bound <= best->resources.geode) {
+      if (bound <= best) {
         free(next);
-        /* free(inventory); */
+        free(inventory);
         continue;
       }
       stack_inventory_push(stack, next);
-      /* free(inventory); */
+      free(inventory);
       continue;
     }
 
@@ -224,9 +222,9 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
-      if (bound <= best->resources.geode) {
+      if (bound <= best) {
         free(next);
-        /* free(inventory); */
+        free(inventory);
         continue;
       }
       stack_inventory_push(stack, next);
@@ -242,9 +240,9 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
-      if (bound <= best->resources.geode) {
+      if (bound <= best) {
         free(next);
-        /* free(inventory); */
+        free(inventory);
         continue;
       }
       stack_inventory_push(stack, next);
@@ -262,9 +260,9 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
-      if (bound <= best->resources.geode) {
+      if (bound <= best) {
         free(next);
-        /* free(inventory); */
+        free(inventory);
         continue;
       }
       stack_inventory_push(stack, next);
@@ -276,9 +274,9 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
 
     inventory_step(inventory, next);
     size_t bound = inventory_bound(next);
-    if (bound <= best->resources.geode) {
+    if (bound <= best) {
       free(next);
-      /* free(inventory); */
+      free(inventory);
       continue;
     }
     next->disallowed_ore = disallowed_ore;
@@ -288,7 +286,7 @@ inventory_t *branch_and_bound(blueprint_t *blueprint) {
 
     stack_inventory_push(stack, next);
 
-    /* free(inventory); */
+    free(inventory);
   }
   free(stack);
 
@@ -315,25 +313,23 @@ int main(int argc, char *argv[]) {
     n_blueprints++;
   }
 
-  for (size_t i = 0; i < n_blueprints; i++) {
-    /* print_blueprint(blueprints[i]); */
-    inventory_t *inventory = branch_and_bound(blueprints[i]);
-    size_t best = inventory->resources.geode;
-    blueprints[i]->quality = blueprints[i]->id * best;
-    /* while (inventory) { */
-    /*   print_inventory(inventory); */
-    /* free(inventory); */
-    /*   inventory = inventory->parent; */
-    /* } */
-    /* printf("%zu\n", best); */
-  }
-
   size_t total = 0;
   for (size_t i = 0; i < n_blueprints; i++) {
-    total += blueprints[i]->quality;
+    size_t best = branch_and_bound(blueprints[i], 24);
+    total += blueprints[i]->id * best;
+  }
+  printf("Part 1: %zu\n", total);
+
+  total = 1;
+  for (size_t i = 0; i < MIN(3, n_blueprints); i++) {
+    size_t best = branch_and_bound(blueprints[i], 32);
+    total *= best;
+  }
+  printf("Part 2: %zu\n", total);
+
+  for (size_t i = 0; i < n_blueprints; i++) {
     free(blueprints[i]);
   }
-  printf("%zu\n", total);
 
   fclose(fp);
 
