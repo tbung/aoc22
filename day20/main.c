@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,8 +43,19 @@ void print_list(list_t *list) {
 int64_t list_get(list_t *list, size_t n, size_t index) {
   list_t *current = list;
   index = index % n;
-  for (size_t i = 0; i < index; i++) {
-    current = current->next;
+  bool invert = false;
+  if (invert > n / 2) {
+    invert = !invert;
+    index = n - index;
+  }
+  if (invert) {
+    for (size_t i = index; i > 0; i--) {
+      current = current->previous;
+    }
+  } else {
+    for (size_t i = 0; i < index; i++) {
+      current = current->next;
+    }
   }
   return current->number;
 }
@@ -82,17 +94,23 @@ void mix(list_t *original[ARRAY_SIZE], size_t n_original, size_t n_iter) {
       // insert current
       int64_t steps = labs(current->number) % (n_original - 1);
 
+      bool invert = current->number < 0;
+      if (steps > (n_original - 1) / 2) {
+        invert = !invert;
+        steps = (n_original - 1) - steps;
+      }
+
 #ifdef DEBUG
       printf("steps: %ld\n", steps);
 #endif
 
-      if (current->number < 0) {
-        for (size_t j = steps; j > 0; j--) {
+      if (invert) {
+        for (int j = steps; j > 0; j--) {
           previous = previous->previous;
         }
         next = previous->next;
       } else {
-        for (size_t j = 0; j < steps; j++) {
+        for (int j = 0; j < steps; j++) {
           next = next->next;
         }
         previous = next->previous;
@@ -122,16 +140,19 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
 
   list_t *original[ARRAY_SIZE] = {0};
+  list_t _original[ARRAY_SIZE] = {0};
   size_t n_original = 0;
 
   list_t *original_enc[ARRAY_SIZE] = {0};
+  list_t _original_enc[ARRAY_SIZE] = {0};
   size_t n_original_enc = 0;
 
   list_t *start = NULL;
   list_t *start_enc = NULL;
 
   while (getline(&line, &len, fp) != -1) {
-    original[n_original] = list_new(atoll(line));
+    _original[n_original].number = atoll(line);
+    original[n_original] = &_original[n_original];
 
     if (n_original > 0) {
       original[n_original - 1]->next = original[n_original];
@@ -144,7 +165,8 @@ int main(int argc, char *argv[]) {
 
     n_original++;
 
-    original_enc[n_original_enc] = list_new(atoll(line) * ENCRYPTION_KEY);
+    _original_enc[n_original_enc].number = atoll(line) * ENCRYPTION_KEY;
+    original_enc[n_original_enc] = &_original_enc[n_original_enc];
 
     if (n_original_enc > 0) {
       original_enc[n_original_enc - 1]->next = original_enc[n_original_enc];
@@ -183,8 +205,6 @@ int main(int argc, char *argv[]) {
 
   printf("Part 1: %ld\n", one + two + three);
 
-  list_free(original[0]);
-
   mix(original_enc, n_original_enc, 10);
   one = list_get(start_enc, n_original_enc, 1000);
   two = list_get(start_enc, n_original_enc, 2000);
@@ -198,8 +218,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   printf("Part 2: %ld\n", one + two + three);
-
-  list_free(original_enc[0]);
 
   exit(EXIT_SUCCESS);
 
