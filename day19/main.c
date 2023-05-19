@@ -102,7 +102,7 @@ typedef struct inventory_t {
   bool disallowed_clay;
   bool disallowed_obsidian;
   bool disallowed_geode;
-  struct inventory_t *parent;
+  size_t bound;
 } inventory_t;
 
 inventory_t *inventory_new() {
@@ -156,6 +156,21 @@ size_t inventory_bound(inventory_t *inventory) {
   return bound;
 }
 
+int cmpinventory(const inventory_t *inventory_a,
+                 const inventory_t *inventory_b) {
+  size_t bound_a;
+  size_t bound_b;
+  bound_a = inventory_a->bound;
+  bound_b = inventory_b->bound;
+  if (bound_a == bound_b) {
+    return 0;
+  }
+  if (bound_a > bound_b) {
+    return 1;
+  }
+  return -1;
+}
+
 size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
   inventory_t *initial = inventory_new();
   initial->bots.ore = 1;
@@ -193,7 +208,6 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
       disallowed_geode = true;
       inventory_t *next = inventory_new();
       memcpy(next, inventory, sizeof(inventory_t));
-      next->parent = inventory;
       build_bot(&next->bots.geode, &next->resources, &blueprint->geode_bot);
 
       inventory_step(inventory, next);
@@ -203,54 +217,17 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
         free(inventory);
         continue;
       }
+      next->bound = bound;
       stack_inventory_push(stack, next);
       free(inventory);
       continue;
     }
-
-    if (can_build_bot(&inventory->resources, &blueprint->ore_bot) &&
-        inventory->bots.ore < max_ore_bots && !inventory->disallowed_ore) {
-      disallowed_ore = true;
-      inventory_t *next = inventory_new();
-      memcpy(next, inventory, sizeof(inventory_t));
-      next->parent = inventory;
-      build_bot(&next->bots.ore, &next->resources, &blueprint->ore_bot);
-
-      inventory_step(inventory, next);
-      size_t bound = inventory_bound(next);
-      if (bound <= best) {
-        free(next);
-        free(inventory);
-        continue;
-      }
-      stack_inventory_push(stack, next);
-    }
-
-    if (can_build_bot(&inventory->resources, &blueprint->clay_bot) &&
-        inventory->bots.clay < max_clay_bots && !inventory->disallowed_clay) {
-      disallowed_clay = true;
-      inventory_t *next = inventory_new();
-      memcpy(next, inventory, sizeof(inventory_t));
-      next->parent = inventory;
-      build_bot(&next->bots.clay, &next->resources, &blueprint->clay_bot);
-
-      inventory_step(inventory, next);
-      size_t bound = inventory_bound(next);
-      if (bound <= best) {
-        free(next);
-        free(inventory);
-        continue;
-      }
-      stack_inventory_push(stack, next);
-    }
-
     if (can_build_bot(&inventory->resources, &blueprint->obsidian_bot) &&
         inventory->bots.obsidian < max_obsidian_bots &&
         !inventory->disallowed_obsidian) {
       disallowed_obsidian = true;
       inventory_t *next = inventory_new();
       memcpy(next, inventory, sizeof(inventory_t));
-      next->parent = inventory;
       build_bot(&next->bots.obsidian, &next->resources,
                 &blueprint->obsidian_bot);
 
@@ -261,18 +238,53 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
         free(inventory);
         continue;
       }
+      next->bound = bound;
+      stack_inventory_push(stack, next);
+      free(inventory);
+      continue;
+    }
+
+    if (can_build_bot(&inventory->resources, &blueprint->ore_bot) &&
+        inventory->bots.ore < max_ore_bots && !inventory->disallowed_ore) {
+      disallowed_ore = true;
+      inventory_t *next = inventory_new();
+      memcpy(next, inventory, sizeof(inventory_t));
+      build_bot(&next->bots.ore, &next->resources, &blueprint->ore_bot);
+
+      inventory_step(inventory, next);
+      size_t bound = inventory_bound(next);
+      if (bound <= best) {
+        free(next);
+        free(inventory);
+        continue;
+      }
+      next->bound = bound;
       stack_inventory_push(stack, next);
     }
 
-    inventory_t *next = inventory_new();
-    memcpy(next, inventory, sizeof(inventory_t));
-    next->parent = inventory;
+    if (can_build_bot(&inventory->resources, &blueprint->clay_bot) &&
+        inventory->bots.clay < max_clay_bots && !inventory->disallowed_clay) {
+      disallowed_clay = true;
+      inventory_t *next = inventory_new();
+      memcpy(next, inventory, sizeof(inventory_t));
+      build_bot(&next->bots.clay, &next->resources, &blueprint->clay_bot);
 
+      inventory_step(inventory, next);
+      size_t bound = inventory_bound(next);
+      if (bound <= best) {
+        free(next);
+        free(inventory);
+        continue;
+      }
+      next->bound = bound;
+      stack_inventory_push(stack, next);
+    }
+
+    inventory_t *next = inventory;
     inventory_step(inventory, next);
     size_t bound = inventory_bound(next);
     if (bound <= best) {
       free(next);
-      free(inventory);
       continue;
     }
     next->disallowed_ore = disallowed_ore;
@@ -280,9 +292,8 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
     next->disallowed_obsidian = disallowed_obsidian;
     next->disallowed_geode = disallowed_geode;
 
+    next->bound = bound;
     stack_inventory_push(stack, next);
-
-    free(inventory);
   }
   free(stack);
 
