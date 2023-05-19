@@ -27,13 +27,6 @@ typedef struct {
   size_t geode;
 } resources_t;
 
-void print_resources(resources_t *resources) {
-  printf("\t\tore: %d\n", resources->ore);
-  printf("\t\tclay: %d\n", resources->clay);
-  printf("\t\tobsidian: %d\n", resources->obsidian);
-  printf("\t\tgeode: %d\n", resources->geode);
-}
-
 typedef struct {
   int id;
   int quality;
@@ -42,18 +35,6 @@ typedef struct {
   resources_t obsidian_bot;
   resources_t geode_bot;
 } blueprint_t;
-
-void print_blueprint(blueprint_t *blueprint) {
-  printf("Blueprint %d:\n", blueprint->id);
-  printf("\tore_bot:\n");
-  print_resources(&blueprint->ore_bot);
-  printf("\tclay_bot:\n");
-  print_resources(&blueprint->clay_bot);
-  printf("\tobsidian_bot:\n");
-  print_resources(&blueprint->obsidian_bot);
-  printf("\tgeode_bot:\n");
-  print_resources(&blueprint->geode_bot);
-}
 
 blueprint_t *blueprint_parse(char *line) {
   blueprint_t *blueprint = malloc(sizeof(blueprint_t));
@@ -111,18 +92,6 @@ inventory_t *inventory_new() {
   return inventory;
 }
 
-void print_inventory(inventory_t *inventory) {
-  printf("Inventory:\n");
-  printf("\tresources:\n");
-  print_resources(&inventory->resources);
-  printf("\tbots:\n");
-  printf("\t\tore: %d\n", inventory->bots.ore);
-  printf("\t\tclay: %d\n", inventory->bots.clay);
-  printf("\t\tobsidian: %d\n", inventory->bots.obsidian);
-  printf("\t\tgeode: %d\n", inventory->bots.geode);
-  printf("\ttime: %d\n", inventory->time);
-}
-
 bool can_build_bot(resources_t *resources, resources_t *recipe) {
   return ((resources->ore >= recipe->ore) &&
           (resources->clay >= recipe->clay) &&
@@ -146,7 +115,7 @@ void inventory_step(inventory_t *initial, inventory_t *next) {
   next->time -= 1;
 }
 
-STACK(inventory, inventory_t *, 1024)
+STACK(inventory, inventory_t *, 64)
 
 size_t inventory_bound(inventory_t *inventory) {
   size_t bound = inventory->bots.geode * inventory->time +
@@ -154,21 +123,6 @@ size_t inventory_bound(inventory_t *inventory) {
                  (inventory->time * (inventory->time - 1)) / 2;
 
   return bound;
-}
-
-int cmpinventory(const inventory_t *inventory_a,
-                 const inventory_t *inventory_b) {
-  size_t bound_a;
-  size_t bound_b;
-  bound_a = inventory_a->bound;
-  bound_b = inventory_b->bound;
-  if (bound_a == bound_b) {
-    return 0;
-  }
-  if (bound_a > bound_b) {
-    return 1;
-  }
-  return -1;
 }
 
 size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
@@ -185,16 +139,17 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
   const size_t max_obsidian_bots = blueprint->geode_bot.obsidian;
 
   size_t best = 0;
+  inventory_t *inventory = inventory_new();
 
   while (!stack_inventory_empty(stack)) {
-    inventory_t *inventory = stack_inventory_pop(stack);
+    inventory_t *top = stack_inventory_pop(stack);
+    memcpy(inventory, top, sizeof(inventory_t));
 
     if (inventory->resources.geode > best) {
       best = inventory->resources.geode;
     }
 
     if (inventory->time == 0) {
-      free(inventory);
       continue;
     }
 
@@ -206,85 +161,107 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
     if (can_build_bot(&inventory->resources, &blueprint->geode_bot) &&
         !inventory->disallowed_geode) {
       disallowed_geode = true;
-      inventory_t *next = inventory_new();
-      memcpy(next, inventory, sizeof(inventory_t));
+
+      inventory_t *next = stack->data[stack->top];
+      if (next == NULL) {
+        next = inventory_new();
+        stack->data[stack->top] = next;
+      }
+
+      if (next != top) {
+        memcpy(next, inventory, sizeof(inventory_t));
+      }
       build_bot(&next->bots.geode, &next->resources, &blueprint->geode_bot);
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
       if (bound <= best) {
-        free(next);
-        free(inventory);
         continue;
       }
       next->bound = bound;
-      stack_inventory_push(stack, next);
-      free(inventory);
+      stack->top++;
       continue;
     }
     if (can_build_bot(&inventory->resources, &blueprint->obsidian_bot) &&
         inventory->bots.obsidian < max_obsidian_bots &&
         !inventory->disallowed_obsidian) {
       disallowed_obsidian = true;
-      inventory_t *next = inventory_new();
-      memcpy(next, inventory, sizeof(inventory_t));
+      inventory_t *next = stack->data[stack->top];
+      if (next == NULL) {
+        next = inventory_new();
+        stack->data[stack->top] = next;
+      }
+      if (next != top) {
+        memcpy(next, inventory, sizeof(inventory_t));
+      }
       build_bot(&next->bots.obsidian, &next->resources,
                 &blueprint->obsidian_bot);
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
       if (bound <= best) {
-        free(next);
-        free(inventory);
         continue;
       }
       next->bound = bound;
-      stack_inventory_push(stack, next);
-      free(inventory);
+      stack->top++;
       continue;
     }
 
     if (can_build_bot(&inventory->resources, &blueprint->ore_bot) &&
         inventory->bots.ore < max_ore_bots && !inventory->disallowed_ore) {
       disallowed_ore = true;
-      inventory_t *next = inventory_new();
-      memcpy(next, inventory, sizeof(inventory_t));
+      inventory_t *next = stack->data[stack->top];
+      if (next == NULL) {
+        next = inventory_new();
+        stack->data[stack->top] = next;
+      }
+      if (next != top) {
+        memcpy(next, inventory, sizeof(inventory_t));
+      }
       build_bot(&next->bots.ore, &next->resources, &blueprint->ore_bot);
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
       if (bound <= best) {
-        free(next);
-        free(inventory);
         continue;
       }
       next->bound = bound;
-      stack_inventory_push(stack, next);
+      stack->top++;
     }
 
     if (can_build_bot(&inventory->resources, &blueprint->clay_bot) &&
         inventory->bots.clay < max_clay_bots && !inventory->disallowed_clay) {
       disallowed_clay = true;
-      inventory_t *next = inventory_new();
-      memcpy(next, inventory, sizeof(inventory_t));
+      inventory_t *next = stack->data[stack->top];
+      if (next == NULL) {
+        next = inventory_new();
+        stack->data[stack->top] = next;
+      }
+      if (next != top) {
+        memcpy(next, inventory, sizeof(inventory_t));
+      }
       build_bot(&next->bots.clay, &next->resources, &blueprint->clay_bot);
 
       inventory_step(inventory, next);
       size_t bound = inventory_bound(next);
       if (bound <= best) {
-        free(next);
-        free(inventory);
         continue;
       }
       next->bound = bound;
-      stack_inventory_push(stack, next);
+      stack->top++;
     }
 
-    inventory_t *next = inventory;
+    inventory_t *next = stack->data[stack->top];
+    if (next == NULL) {
+      next = inventory_new();
+      stack->data[stack->top] = next;
+    }
+    if (next != top) {
+      memcpy(next, inventory, sizeof(inventory_t));
+    }
     inventory_step(inventory, next);
     size_t bound = inventory_bound(next);
     if (bound <= best) {
-      free(next);
       continue;
     }
     next->disallowed_ore = disallowed_ore;
@@ -293,7 +270,7 @@ size_t branch_and_bound(blueprint_t *blueprint, size_t time) {
     next->disallowed_geode = disallowed_geode;
 
     next->bound = bound;
-    stack_inventory_push(stack, next);
+    stack->top++;
   }
   free(stack);
 
