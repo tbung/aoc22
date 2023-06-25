@@ -2,11 +2,11 @@ HEADERS := $(wildcard *.h) $(wildcard ../lib/*.h)
 
 build/debug/main: main.c $(HEADERS)
 	mkdir -p build/debug
-	gcc -xc -g -Wall -o build/debug/main main.c
+	gcc -xc -g -Wall -DDEBUG -o build/debug/main main.c -lm
 
 build/release/main: main.c $(HEADERS)
 	mkdir -p build/release
-	gcc -xc -Wall -O3 -o build/release/main main.c
+	gcc -xc -g -Wall -O3 -o build/release/main main.c -lm
 
 .PHONY: release
 release: build/release/main
